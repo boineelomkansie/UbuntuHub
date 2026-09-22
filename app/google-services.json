@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "938125550253",
+    "project_id": "ubuntuhub-f124d",
+    "storage_bucket": "ubuntuhub-f124d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:938125550253:android:f811de9c0e0b689c771c24",
+        "android_client_info": {
+          "package_name": "com.ubuntuhub.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0_slsJcQqWTc3z98XF4-1RDDx1TFsl1c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
