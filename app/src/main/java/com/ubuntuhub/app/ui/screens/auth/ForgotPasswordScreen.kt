@@ -165,6 +165,7 @@ fun ForgotPasswordScreen(
 
                     when {
 
+
                         trimmedEmail.isBlank() -> {
                             errorMessage =
                                 "Please enter your email."
