@@ -38,6 +38,10 @@ import androidx.compose.ui.unit.sp
 import com.ubuntuhub.app.R
 import androidx.compose.foundation.text.KeyboardOptions
 import com.google.firebase.auth.FirebaseAuth
+import com.ubuntuhub.app.data.RetrofitClient
+import com.ubuntuhub.app.data.UserSyncRequest
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 private val UbuntuGreen = Color(0xFF205C3B)
 private val UbuntuOrange = Color(0xFFF39A24)
@@ -53,6 +57,8 @@ fun RegisterScreen(
     val auth = remember {
         FirebaseAuth.getInstance()
     }
+
+    val coroutineScope = rememberCoroutineScope()
 
     // Form fields
     var fullName by remember {
@@ -432,7 +438,56 @@ fun RegisterScreen(
                                 if (task.isSuccessful) {
 
                                     // Firebase account created successfully.
-                                    onRegisterSuccess()
+                                    val firebaseUser = auth.currentUser
+
+                                    if (firebaseUser == null) {
+                                        isRegistering = false
+                                        errorMessage = "Registration succeeded, but the user could not be loaded."
+                                        return@addOnCompleteListener
+                                    }
+
+                                    // Save the user's full name as their Firebase display name.
+                                    val profileUpdates = com.google.firebase.auth.userProfileChangeRequest {
+                                        displayName = trimmedName
+                                    }
+
+                                    firebaseUser.updateProfile(profileUpdates)
+                                        .addOnCompleteListener { profileTask ->
+
+                                            if (!profileTask.isSuccessful) {
+                                                isRegistering = false
+                                                errorMessage =
+                                                    profileTask.exception?.localizedMessage
+                                                        ?: "Account created, but profile setup failed."
+                                                return@addOnCompleteListener
+                                            }
+
+                                            // Sync the Firebase user with the UbuntuHub REST API.
+                                            coroutineScope.launch {
+
+                                                try {
+                                                    RetrofitClient.apiService.syncUser(
+                                                        UserSyncRequest(
+                                                            firebaseUid = firebaseUser.uid,
+                                                            username = trimmedName,
+                                                            email = trimmedEmail
+                                                        )
+                                                    )
+
+                                                    isRegistering = false
+
+                                                    // Registration and API sync completed successfully.
+                                                    onRegisterSuccess()
+
+                                                } catch (e: Exception) {
+
+                                                    isRegistering = false
+
+                                                    errorMessage =
+                                                        "Account created, but user data could not be synced. Please try again."
+                                                }
+                                            }
+                                        }
 
                                 } else {
 

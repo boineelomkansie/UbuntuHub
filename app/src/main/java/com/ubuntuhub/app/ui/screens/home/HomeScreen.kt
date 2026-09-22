@@ -107,10 +107,23 @@ fun HomeScreen(
 
             posts.value = RetrofitClient.apiService.getPosts()
 
+        } catch (e: retrofit2.HttpException) {
+
+            errorMessage.value = when (e.code()) {
+                404 -> "No community posts were found."
+                500 -> "The server encountered an error. Please try again."
+                else -> "Unable to load community posts. Please try again."
+            }
+
+        } catch (e: java.io.IOException) {
+
+            errorMessage.value =
+                "Unable to connect to the server. Please check your internet connection."
+
         } catch (e: Exception) {
 
             errorMessage.value =
-                "Unable to load community posts. Please check your connection."
+                "Something went wrong while loading community posts."
 
         } finally {
 

@@ -40,6 +40,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ubuntuhub.app.R
 import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.runtime.rememberCoroutineScope
+import com.ubuntuhub.app.data.RetrofitClient
+import com.ubuntuhub.app.data.UserSyncRequest
+import kotlinx.coroutines.launch
 
 private val UbuntuGreen = Color(0xFF205C3B)
 private val UbuntuOrange = Color(0xFFF39A24)
@@ -56,6 +60,8 @@ fun LoginScreen(
     val auth = remember {
         FirebaseAuth.getInstance()
     }
+
+    val coroutineScope = rememberCoroutineScope()
 
     var emailOrPhone by remember {
         mutableStateOf("")
@@ -283,8 +289,49 @@ fun LoginScreen(
 
                                 if (task.isSuccessful) {
 
-                                    // Firebase login successful.
-                                    onLoginSuccess()
+                                    val firebaseUser = auth.currentUser
+
+                                    if (firebaseUser == null) {
+                                        errorMessage = "Login succeeded, but your account could not be loaded."
+                                        return@addOnCompleteListener
+                                    }
+
+                                    val username = firebaseUser.displayName
+                                        ?.trim()
+                                        ?.takeIf { it.isNotEmpty() }
+                                        ?: firebaseUser.email
+                                            ?.substringBefore("@")
+                                            ?.takeIf { it.isNotEmpty() }
+                                        ?: "User"
+
+                                    val userEmail = firebaseUser.email?.trim()
+
+                                    if (userEmail.isNullOrEmpty()) {
+                                        errorMessage = "Your account does not have a valid email address."
+                                        return@addOnCompleteListener
+                                    }
+
+                                    coroutineScope.launch {
+                                        try {
+
+                                            // Make sure the Firebase user exists in PostgreSQL
+                                            // and keep the account information up to date.
+                                            RetrofitClient.apiService.syncUser(
+                                                UserSyncRequest(
+                                                    firebaseUid = firebaseUser.uid,
+                                                    username = username,
+                                                    email = userEmail
+                                                )
+                                            )
+
+                                            onLoginSuccess()
+
+                                        } catch (e: Exception) {
+
+                                            errorMessage =
+                                                "Login succeeded, but your account could not be synced. Please try again."
+                                        }
+                                    }
 
                                 } else {
 

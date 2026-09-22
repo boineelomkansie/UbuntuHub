@@ -589,11 +589,6 @@ fun CreatePostScreen(
                                     "Please select a category."
                             }
 
-                            location.isBlank() -> {
-                                errorMessage =
-                                    "Please enter a location."
-                            }
-
                             else -> {
                                 errorMessage = ""
                                 draftSaved = false
@@ -601,8 +596,24 @@ fun CreatePostScreen(
 
                                 coroutineScope.launch {
                                     try {
+
+                                        val firebaseUser = FirebaseAuth.getInstance().currentUser
+
+                                        if (firebaseUser == null) {
+                                            errorMessage = "You must be logged in to create a post."
+                                            return@launch
+                                        }
+
+                                        val firebaseUid = firebaseUser.uid
+
+                                        // Find the corresponding PostgreSQL user.
+                                        val user = RetrofitClient.apiService.getUserByFirebaseUid(
+                                            firebaseUid
+                                        )
+
+                                        // Create the post using the actual PostgreSQL user ID.
                                         val request = CreatePostRequest(
-                                            userId = 1,
+                                            userId = user.id,
                                             title = selectedCategory,
                                             description = postText.trim(),
                                             location = location.trim(),
@@ -617,9 +628,20 @@ fun CreatePostScreen(
 
                                         onPostCreated()
 
+                                    } catch (e: retrofit2.HttpException) {
+                                        errorMessage = when (e.code()) {
+                                            400 -> "The post contains invalid information. Please check your details."
+                                            401 -> "You are not authorised to create this post."
+                                            404 -> "Your account could not be found."
+                                            500 -> "The server encountered an error. Please try again."
+                                            else -> "Unable to create post. Please try again."
+                                        }
+                                    } catch (e: java.io.IOException) {
+                                        errorMessage =
+                                            "Unable to connect to the server. Please check your internet connection."
                                     } catch (e: Exception) {
                                         errorMessage =
-                                            "Unable to create post. Please check your connection and try again."
+                                            "Something went wrong while creating the post. Please try again."
                                     } finally {
                                         isPosting = false
                                     }
